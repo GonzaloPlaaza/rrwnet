@@ -11,6 +11,7 @@ class ModelFactory(UniversalFactory):
         models.RRUNet,
         models.RRWNetAll,
         models.RRWNet,
+        models.RRWNetScratch
     ]
 
 

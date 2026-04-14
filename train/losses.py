@@ -41,8 +41,11 @@ class BCE3Loss(nn.Module):
 
         return loss
 
-    def save_predicted(self, prediction, fname):
-        prediction_processed = self.process_predicted(prediction)
+    def save_predicted(self, prediction, fname, processed=False):
+        if not processed:
+            prediction_processed = self.process_predicted(prediction)
+        else:
+            prediction_processed = prediction
         vutils.save_image(prediction_processed, fname)
 
     def process_predicted(self, prediction):
@@ -78,8 +81,11 @@ class RRLoss(nn.Module):
 
         return loss
 
-    def save_predicted(self, predictions, fname):
-        self.base_criterion.save_predicted(predictions[-1], fname)
+    def save_predicted(self, predictions, fname, processed=False):
+        if not processed:
+            self.base_criterion.save_predicted(predictions[-1], fname)
+        else:
+            self.base_criterion.save_predicted(predictions, fname, processed=True)
 
     def process_predicted(self, predictions):
         new_predictions = []

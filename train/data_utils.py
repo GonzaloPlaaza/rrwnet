@@ -31,8 +31,9 @@ class SubsetSequentialSampler(Sampler):
         indices (list): a list of indices
     """
     def __init__(self, indices, data_source=None):
-        super().__init__(data_source)
+        super().__init__()
         self.indices = indices
+        self.data_source = data_source  
 
     def __iter__(self):
         return iter(self.indices)
@@ -49,8 +50,9 @@ class SubsetRandomSampler(Sampler):
     """
 
     def __init__(self, indices, data_source=None):
-        super().__init__(data_source)
+        super().__init__()
         self.indices = indices
+        self.data_source = data_source  
 
     def __iter__(self):
         return (self.indices[i.item()] for i in torch.randperm(len(self.indices)))

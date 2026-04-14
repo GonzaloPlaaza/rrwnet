@@ -198,6 +198,11 @@ Please follow the instructions in [eval/README.md](eval/README.md).
 If you have any questions or problems with the code or the paper, please do not hesitate to open an issue in this repository (preferred) or contact me at `jose.moranosanchez@meduniwien.ac.at`.
 
 
+## In this fork:
+
+- Attempt at re-training RRWNet from scratch, which was unsuccesful. The retrieved predictions were all black. However, it should be a starting point for a further attempt.
+
+- This fork also includes inference_rrwnet.py and launch_experiments_rrwnet.sh, which should be moved to Artery_Vein_Segmentation/ to run correctly. The model used in the OCULAR paper is the HRF_0.pth, found at https://github.com/j-morano/rrwnet/releases/tag/weights. Once downloaded, it should be moved to models/.
 
 ## Citation
 

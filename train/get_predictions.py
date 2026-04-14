@@ -19,6 +19,8 @@ parser.add_argument('-m', '--masks_path', type=str)
 parser.add_argument('-t', '--test_name', type=str)
 args = parser.parse_args()
 
+# python3 get_predictions.py -p __training/Journal_paper/all/4_folds/RRWNet_5it_lr1e-04_RRLoss-BCE3Loss_bc64/0 -i _Data/all/train/enhanced/
+
 
 if args.test_name is None:
     if 'RITE' in args.images_path:
@@ -54,6 +56,7 @@ model = factories.ModelFactory().create_class(
 
 print('Loading weights')
 model.load_state_dict(checkpoint)
+model.eval()
 
 if torch.cuda.is_available():
     model.cuda()
@@ -75,7 +78,7 @@ if args.test_name is not None:
     save_path = save_path / args.test_name
 save_path.mkdir(exist_ok=True, parents=True)
 
-for image_fn in sorted(images_path.iterdir()):
+for i, image_fn in enumerate(sorted(images_path.iterdir())):
     mask_fn = None
     for mask_fn in masks_path.iterdir():
         if mask_fn.stem == image_fn.stem:
@@ -110,6 +113,7 @@ for image_fn in sorted(images_path.iterdir()):
         with torch.no_grad():
             preds = model(tensor)
             if isinstance(preds, list):
+                print("I'm a list")
                 pred = preds[-1]
             else:
                 pred = preds
@@ -118,5 +122,9 @@ for image_fn in sorted(images_path.iterdir()):
             pred = pred[:, :, padding[0][0]:-padding[0][1], padding[1][0]:-padding[1][1]]
             target_fn = save_path / Path(image_fn).name
             vutils.save_image(pred, target_fn)
+
+    if i > 5:
+        print('Stopping after 5 images for testing purposes')
+        break
 
 print('Images saved in', save_path)

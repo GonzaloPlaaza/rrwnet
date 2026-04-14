@@ -1,13 +1,14 @@
 import argparse
 import socket
-
+from pathlib import Path
+import pandas as pd
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default='RITE')
 parser.add_argument('--num_iterations', type=int, default=5)
 parser.add_argument('--criterion', type=str, default='RRLoss')
 parser.add_argument('--base_criterion', type=str, default='BCE3Loss')
-parser.add_argument('--model', type=str, default='RRWNet')
+parser.add_argument('--model', type=str, default='RRWNetFixed')
 parser.add_argument('--num_folds', type=int, default=4)
 parser.add_argument('--learning_rate', type=float, default=1e-04)
 parser.add_argument('--num_epochs', type=int, default=None)
@@ -24,7 +25,8 @@ args = parser.parse_args()
 
 
 ### Configuration arguments
-
+CSV_PATH = Path("../../Artery_Vein_Segmentation/data_splits/artery_vein_segmentation/full_tr_av_segmentation.csv")
+csv_df = pd.read_csv(CSV_PATH)
 num_folds = args.num_folds
 active_folds = range(num_folds)
 
@@ -92,6 +94,33 @@ elif dataset == 'HRF-Karlsson-w1024':
         'mask': {
             'path': f'HRF_AVLabel_191219/train_karlsson_w1024/enhanced_masks',
             'pattern': '[0-9]+_.+[.]png'
+        }
+    }
+
+elif dataset == "all":
+
+    images = []
+    
+    for i, image_path in enumerate(csv_df['image_path']):
+        image_name = Path(image_path).stem
+        #Find corresponding dataset name at that row
+        dataset_name = csv_df.loc[i, 'dataset']
+        image_name = f"{dataset_name}_{image_name}"
+        images.append(image_name)
+
+    data = {
+        'data_folder': args.data_folder,
+        'target': {
+            'path': 'all/train/av3',
+            'pattern': '.+[.]png'
+        },
+        'original': {
+            'path': 'all/train/enhanced',
+            'pattern': '.+[.]png'
+        },
+        'mask': {
+            'path': 'all/train/enhanced_masks',
+            'pattern': '.+[.]png'
         }
     }
 

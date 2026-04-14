@@ -10,6 +10,11 @@ from PIL import Image
 from scipy.interpolate import interp1d
 from skimage.morphology import disk
 
+# python3 preprocessing.py \
+#     --images-path ./data/images \
+#     --masks-path ./data/masks \
+#     --labels-path ./data/labels \
+#     --save-path train/_Data/all/train/
 
 
 def crop_center(img, cropx, cropy):
@@ -102,49 +107,78 @@ def enhance_image(img, mask, int_format=False, disk_size=5):
 
     return enhanced_image, mask
 
-
-def enhance_images(image_names, mask_names, save_path):
-    """ Enhances a list of images.
-    Args:
-        image_names (list): List of image names.
-        mask_names (list): List of ROI mask names.
+def preprocess_label(label, mask):
     """
-    for image_name, mask_name in zip(image_names, mask_names):
-        assert Path(image_name).name == Path(mask_name).name
-        enhanced_image, eroded_mask = enhance_image(image_name, mask_name, int_format=True)
+    Zoom + crop + apply eroded mask to labels to match preprocessed images.
+    Args:
+        label: HxWx3 uint8 RGB label
+        mask: HxW eroded ROI mask
+    """
+    mask_bool = mask > 0
+    zoomed_label = Image.fromarray(label)
+    zoomed_label = zoomed_label.resize(
+        (int(label.shape[1]*1.15), int(label.shape[0]*1.15)),
+        Image.NEAREST  # preserve categorical labels
+    )
+    zoomed_label = np.array(zoomed_label)
+    zoomed_label = crop_center(zoomed_label, label.shape[1], label.shape[0])
 
-        io.imsave(join(save_path, 'images', Path(image_name).name), enhanced_image)
-        io.imsave(
-            join(save_path, 'masks', Path(mask_name).name),
-            eroded_mask
-        )
+    # Apply eroded mask
+    for c in range(3):
+        zoomed_label[:, :, c][~mask_bool] = 0
+
+    return zoomed_label
 
 
-def main(images_path, masks_path, save_path):
-    # Get images and masks
-    image_names = glob.glob(join(images_path, '*.png'))
-    mask_names = glob.glob(join(masks_path, '*.png'))
-    # Sort
-    image_names.sort()
-    mask_names.sort()
-    print(image_names)
-    print(mask_names)
-    enhance_images(image_names, mask_names, save_path)
+def enhance_images_labels(image_names, mask_names, label_names, save_path):
+
+    """Enhance a list of images and save them to disk.
+    Args:        
+        image_names (list): List of paths to the images to enhance
+        mask_names (list): List of paths to the masks corresponding to the images
+        label_names (list): List of paths to the labels corresponding to the images
+        save_path (str): Path to save the enhanced images and labels
+
+    Returns:
+        None
+    """
+    
+    for img_path, mask_path, label_path in zip(image_names, mask_names, label_names):
+
+        print(f"Processing {img_path} with mask {mask_path} and label {label_path}...")
+        assert Path(img_path).name == Path(mask_path).name == Path(label_path).name
+        enhanced_image, eroded_mask = enhance_image(img_path, mask_path, int_format=True)
+
+        # Preprocess label
+        label = io.imread(label_path)
+        processed_label = preprocess_label(label, eroded_mask)        
+        
+        # Save enhanced image and label
+        io.imsave(join(save_path, 'enhanced', Path(img_path).name), enhanced_image)
+        io.imsave(join(save_path, 'av3', Path(label_path).name), processed_label)
+        io.imsave(join(save_path, 'enhanced_masks', Path(mask_path).name), eroded_mask)
+
+
+def main(images_path, masks_path, labels_path, save_path):
+    
+    image_names = sorted(glob.glob(join(images_path, '*.png')))
+    mask_names = sorted(glob.glob(join(masks_path, '*.png')))
+    label_names = sorted(glob.glob(join(labels_path, '*.png')))
+
+    save_path = Path(save_path)
+    save_path.mkdir(parents=True, exist_ok=True)
+    (save_path / 'enhanced').mkdir(exist_ok=True)
+    (save_path / 'av3').mkdir(exist_ok=True)
+    (save_path / 'enhanced_masks').mkdir(exist_ok=True)
+
+    enhance_images_labels(image_names, mask_names, label_names, save_path)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Preprocess images')
-    parser.add_argument('--images-path', type=str, required=True,
-        help='Path to the images')
-    parser.add_argument('--masks-path', type=str, required=True,
-        help='Path to the masks')
-    parser.add_argument('--save-path', type=str, required=True,
-        help='Path to save the enhanced images')
+    parser = argparse.ArgumentParser(description='Preprocess images and labels for RRWNet')
+    parser.add_argument('--images-path', type=str, required=True)
+    parser.add_argument('--masks-path', type=str, required=True)
+    parser.add_argument('--labels-path', type=str, required=True)
+    parser.add_argument('--save-path', type=str, required=True)
     args = parser.parse_args()
-    save_path = Path(args.save_path)
-
-    print('Preprocessing')
-    save_path.mkdir(exist_ok=True)
-    (save_path / 'masks').mkdir(exist_ok=True)
-    (save_path / 'images').mkdir(exist_ok=True)
-    main(args.images_path, args.masks_path, args.save_path)
+    main(args.images_path, args.masks_path, args.labels_path, args.save_path)

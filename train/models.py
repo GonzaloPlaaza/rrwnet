@@ -198,3 +198,48 @@ class RRWNet(RRWNetAll):
             predictions.append(torch.cat((pred_2, bv_logits), dim=1))
 
         return predictions
+
+
+class RRWNetScratch(nn.Module):
+    """
+    RRWNet suitable for training from scratch.
+    Implements the Base + Recurrent Refinement (RR) subnetworks as described in the paper:
+    - Base UNet predicts A/V/BV logits from input image
+    - RR subnetwork refines A/V maps over `num_iterations` iterations
+    - BV map remains fixed and concatenated at each iteration
+    """
+    def __init__(self, input_ch=3, output_ch=3, base_ch=64, num_iterations=5):
+        super().__init__()
+        self.num_iterations = num_iterations
+
+        # Base UNet
+        self.first_u = UNetModule(input_ch, output_ch, base_ch)  # outputs 3 logits: A, V, BV
+
+        # Recurrent Refinement UNet: refines only A/V channels (2 channels in, 2 channels out)
+        self.second_u = UNetModule(output_ch, 2, base_ch)
+
+    def forward(self, x):
+        predictions = []
+
+        # --- Base UNet ---
+        pred_base = self.first_u(x)              # logits, shape (B, 3, H, W)
+        predictions.append(pred_base)
+
+        # Separate BV channel (fixed through iterations)
+        bv_logits = pred_base[:, 2:3, :, :]      # shape (B, 1, H, W)
+        av_logits = pred_base[:, :2, :, :]       # shape (B, 2, H, W)
+
+        # --- First RR refinement ---
+        pred_rr = self.second_u(av_logits)       # refine A/V logits
+        predictions.append(torch.cat((pred_rr, bv_logits), dim=1))  # concat BV for storing
+
+        # --- Recurrent refinement loop ---
+        for _ in range(self.num_iterations):
+            # Concatenate fixed BV logits to A/V logits for RR input
+            pred_rr = self.second_u(torch.cat((pred_rr, bv_logits), dim=1))
+            # Store concatenated A/V logits + BV logits for loss computation
+            predictions.append(torch.cat((pred_rr, bv_logits), dim=1))
+
+        # Return **logits**, not probabilities
+        # Sigmoid will be applied at loss time (BCEWithLogitsLoss)
+        return predictions

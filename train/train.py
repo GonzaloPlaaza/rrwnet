@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+#python3 train.py --dataset all --model RRWNet
 
 import os
 import multiprocessing
@@ -112,6 +113,7 @@ def train(training_path, train_idx, test_idx):
         test_loader=test_loader,
         scheduler_patience=sys.maxsize,
         stopping_patience=200,
+        #max_epochs=25,
         path_to_save=training_path,
     )
 
@@ -176,17 +178,17 @@ def train_sets(sets):
 
         instances.append(current_instance)
 
-    print(instances)
+    #print(instances)
 
     for instance in instances:
-        print('\n', instance['train_path'])
-        print(
-            '[PID: {}] TRAINING SET ({}): {}/{}'.format(
-                process_id, instance['i'],
-                instance['train_imgs'],
-                instance['val_imgs']
-            )
-        )
+        # print('\n', instance['train_path'])
+        # print(
+        #     '[PID: {}] TRAINING SET ({}): {}/{}'.format(
+        #         process_id, instance['i'],
+        #         instance['train_imgs'],
+        #         instance['val_imgs']
+        #     )
+        # )
 
         train(
             instance['train_path'],
